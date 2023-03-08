@@ -11,7 +11,13 @@ class SQLiteRepository(AbstractRepository[T]):
         self.table_name = cls.__name__.lower()
 
         self.fields = get_annotations(cls, eval_str=True)
+        names = ', '.join(self.fields.keys())
         self.fields.pop('pk')
+        with sqlite3.connect(self.db_file) as con:
+            cur = con.cursor()
+            cur.execute(f'CREATE TABLE IF NOT EXISTS {self.table_name} ({names})')
+            #con.close()
+
 
     def add(self, obj: T) -> int:
         names = ', '.join(self.fields.keys())
@@ -28,6 +34,7 @@ class SQLiteRepository(AbstractRepository[T]):
         return obj.pk
 
     def get(self, pk: int) -> T | None:
+
         """ Получить объект по id """
         pass
 
