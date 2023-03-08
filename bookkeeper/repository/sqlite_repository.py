@@ -37,7 +37,7 @@ class SQLiteRepository(AbstractRepository[T]):
         where - условие в виде словаря {'название_поля': значение}
         если условие не задано (по умолчанию), вернуть все записи
         """
-        with sqlite3.connect(self.db_file) as con:
+        with sqlite3.cnnect(self.db_file) as con:
             cur = con.cursor()
             cur.execute(f'SELECT * FROM {self.table_name}')  #
             res = cur.fetchall()
