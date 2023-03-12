@@ -101,3 +101,17 @@ class SQLiteRepository(AbstractRepository[T]):
 
         res = cur.execute(f'SELECT * FROM {self.table_name} WHERE rowid = {pk}').fetchone()
         return res is not None
+
+    def get_day_budget(self, obj: T) -> T | None:
+        """ Рассчет бюджета за день. """
+
+        with sqlite3.connect(self.db_file) as con:
+            cur = con.cursor()
+            cur.execute('PRAGMA foreign_keys = ON')
+            cur.execute(f'INSERT INTO '
+                        f'budget (period, amount)'
+                        f'("День", (select sum(amount) from expense where date(expense_date) = DATE()))')
+
+            obj.pk = cur.lastrowid
+        con.close()
+        return obj.pk
