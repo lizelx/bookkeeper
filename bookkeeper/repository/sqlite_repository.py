@@ -1,10 +1,19 @@
+"""
+Модуль описывает репозиторий sqlite. Наследуется от класса абстрактного репозитория.
+Репозиторий реализует хранение объектов, присваивая каждому объекту уникальный
+идентификатор в атрибуте pk (primary key).
+"""
+
 import sqlite3
-from bookkeeper.repository.abstract_repository import AbstractRepository, T
 from typing import Any
 from inspect import get_annotations
+from bookkeeper.repository.abstract_repository import AbstractRepository, T
 
 
 def obj_make(cls: Any, fields: dict[Any, Any], values: str) -> Any:
+    """
+    Возвращает объект класса Expense, Category или Budget.
+    """
     res = object.__new__(cls)
     if values is None:
         return None
@@ -15,6 +24,11 @@ def obj_make(cls: Any, fields: dict[Any, Any], values: str) -> Any:
 
 
 class SQLiteRepository(AbstractRepository[T]):
+    """
+    Репозиторий, хранящий данные в базе данных.
+    Реализует методы add(), get(), get_all(), update(),
+    delete(), get_budget().
+    """
     def __init__(self, db_file: str, cls: type) -> None:
         self.cls: type = cls
         self.db_file = db_file
@@ -29,20 +43,20 @@ class SQLiteRepository(AbstractRepository[T]):
             cur.execute(f'CREATE TABLE IF NOT EXISTS {self.table_name} ({fileds_type}'
                         f'pk INTEGER PRIMARY KEY)')
 
-    def add(self, obj: T) -> int:
+    def add(self, obj: T) -> T:
         """ Добавить объект в БД """
         if getattr(obj, 'pk', None) != 0:
             raise ValueError(f'trying to add object {obj}'
                              f' with filled `pk` attribute')
         names = ', '.join(self.fields.keys())
-        p = ', '.join("?" * len(self.fields))
+        placeholder = ', '.join("?" * len(self.fields))
         values = [getattr(obj, x) for x in self.fields]
         with sqlite3.connect(self.db_file) as con:
             cur = con.cursor()
             cur.execute('PRAGMA foreign_keys = ON')
             cur.execute(f'INSERT INTO '
                         f'{self.table_name} ({names})'
-                        f'VALUES({p})', values)
+                        f'VALUES({placeholder})', values)
             obj.pk = cur.lastrowid
         con.close()
         return obj.pk
@@ -67,11 +81,11 @@ class SQLiteRepository(AbstractRepository[T]):
             if where is None:
                 cur.execute(f'SELECT * FROM {self.table_name}')
             else:
-                p = " AND ".join(list(where.keys()))
+                placeholder = " AND ".join(list(where.keys()))
                 values = list(where.values())
                 cur.execute(f"SELECT * FROM "
                             f"{self.table_name} "
-                            f"WHERE {p}", values)
+                            f"WHERE {placeholder}", values)
             res = [obj_make(self.cls, self.fields, val) for val in cur.fetchall()]
         con.close()
         return res
@@ -99,19 +113,76 @@ class SQLiteRepository(AbstractRepository[T]):
         """ Проверка на существование записей с существующим pk.
             Возвратит True если запись существует, и False если нет"""
 
-        res = cur.execute(f'SELECT * FROM {self.table_name} WHERE rowid = {pk}').fetchone()
+        res = cur.execute(f'SELECT * FROM {self.table_name}'
+                          f' WHERE rowid = {pk}').fetchone()
         return res is not None
 
-    def get_day_budget(self, obj: T) -> T | None:
+    def get_budget(self) -> None:
         """ Рассчет бюджета за день. """
 
         with sqlite3.connect(self.db_file) as con:
             cur = con.cursor()
             cur.execute('PRAGMA foreign_keys = ON')
-            cur.execute(f'INSERT INTO '
-                        f'budget (period, amount)'
-                        f'("День", (select sum(amount) from expense where date(expense_date) = DATE()))')
-
-            obj.pk = cur.lastrowid
-        con.close()
-        return obj.pk
+            if len(cur.execute('SELECT * FROM expense').fetchall()) == 1:
+                cur.execute('INSERT INTO '
+                            'budget (period, amount, budget_all, budget_fix) VALUES'
+                            '("День", 0, 1000, 1000)')
+                cur.execute('INSERT INTO '
+                            'budget (period, amount, budget_all, budget_fix) VALUES'
+                            '("Неделя", 0, 7000, 7000)')
+                cur.execute('INSERT INTO '
+                            'budget (period, amount, budget_all, budget_fix) VALUES'
+                            '("Месяц", 0, 30000, 30000)')
+                cur.execute('UPDATE budget SET amount = (select sum(amount)'
+                            ' from expense where date(expense_date) = DATE())'
+                            ' WHERE period = "День"')
+                cur.execute('UPDATE budget SET amount = (select sum(amount)'
+                            ' from expense where date(expense_date) >= date(DATE(),'
+                            ' "-7 days"))'
+                            ' WHERE period = "Неделя"')
+                cur.execute('UPDATE budget SET amount = (select sum(amount)'
+                            ' from expense where date(expense_date) >= date(DATE(),'
+                            ' "-30 days"))'
+                            ' WHERE period = "Месяц"')
+                cur.execute('UPDATE budget SET budget_all ='
+                            ' (select budget.budget_all-(SELECT amount FROM expense'
+                            ' ORDER BY pk DESC LIMIT 1)'
+                            ' from budget WHERE budget.period = "День")'
+                            ' WHERE budget.period = "День";')
+                cur.execute('UPDATE budget SET budget_all ='
+                            ' (select budget.budget_all-(SELECT amount FROM expense'
+                            ' ORDER BY pk DESC LIMIT 1)'
+                            ' from budget WHERE budget.period = "Неделя")'
+                            ' WHERE budget.period = "Неделя";')
+                cur.execute('UPDATE budget SET budget_all ='
+                            ' (select budget.budget_all-(SELECT amount FROM expense'
+                            ' ORDER BY pk DESC LIMIT 1)'
+                            ' from budget WHERE budget.period = "Месяц")'
+                            ' WHERE budget.period = "Месяц";')
+            else:
+                cur.execute('UPDATE budget SET amount = (select sum(amount)'
+                            ' from expense where date(expense_date) = DATE())'
+                            ' WHERE period = "День"')
+                cur.execute('UPDATE budget SET amount = (select sum(amount)'
+                            ' from expense where date(expense_date) >= date(DATE(),'
+                            ' "-7 days"))'
+                            ' WHERE period = "Неделя"')
+                cur.execute('UPDATE budget SET amount = (select sum(amount)'
+                            ' from expense where date(expense_date) >= date(DATE(),'
+                            ' "-30 days"))'
+                            ' WHERE period = "Месяц"')
+                cur.execute('UPDATE budget SET budget_all ='
+                            ' (select budget_all-(SELECT amount FROM expense'
+                            ' ORDER BY pk DESC LIMIT 1)'
+                            ' from budget where budget.period = "День")'
+                            ' where budget.period = "День";')
+                cur.execute('UPDATE budget SET budget_all ='
+                            ' (select budget_all-(SELECT amount FROM expense'
+                            ' ORDER BY pk DESC LIMIT 1)'
+                            ' from budget WHERE budget.period = "Неделя")'
+                            ' WHERE budget.period = "Неделя";')
+                cur.execute('UPDATE budget SET budget_all ='
+                            ' (select budget_all-(SELECT amount FROM expense'
+                            ' ORDER BY pk DESC LIMIT 1)'
+                            ' from budget WHERE budget.period = "Месяц")'
+                            ' WHERE budget.period = "Месяц";')
