@@ -475,6 +475,25 @@ files = [
 shiboken6 = "6.4.2"
 
 [[package]]
+name = "pyside6-qtads"
+version = "4.0.1.1"
+description = "PySide6 bindings to Qt Advanced Docking System"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "PySide6-QtAds-4.0.1.1.tar.gz", hash = "sha256:b79c0b210edfa4508e446316e0872733f99cd0abe7cce269dc50ac6697ac2ffc"},
+    {file = "PySide6_QtAds-4.0.1.1-cp37-abi3-macosx_10_13_x86_64.whl", hash = "sha256:9a3803569be070fb3db245e015a66b78aa46f6626f0e9ca38525968abf432935"},
+    {file = "PySide6_QtAds-4.0.1.1-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:6764bf08697c7119d620dac24c93c19141c754fedbf4582f6faaa2416a3f85ff"},
+    {file = "PySide6_QtAds-4.0.1.1-cp37-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:0a7493577a92f7a01580b681ad76d6162b715657b94c239ea1fa30b94b282d4f"},
+    {file = "PySide6_QtAds-4.0.1.1-cp37-abi3-win_amd64.whl", hash = "sha256:bd2ccac20a0690355af0f28b0530854eb649b4bc66dd5402cce8f14855d6e730"},
+]
+
+[package.dependencies]
+PySide6-Essentials = "6.4.2"
+shiboken6 = "6.4.2"
+
+[[package]]
 name = "pytest"
 version = "7.2.2"
 description = "pytest: simple powerful testing with Python"
@@ -699,4 +718,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "7e9ed741233e8baee7cbfc18097ad8428a8fa0a5246880d8e05fc585ffa4da54"
+content-hash = "183ab02c4711dbcce764d54176b4aa02846d836ea677066cf5c245b744636596"
