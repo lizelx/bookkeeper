@@ -42,6 +42,7 @@ def read_tree(lines: Iterable[str]) -> list[tuple[str, str | None]]:
     -------
     Список пар "потомок-родитель"
     """
+
     parents: list[tuple[str | None, int]] = []
     last_indent = -1
     last_name = None
